@@ -1,71 +1,395 @@
-# Jobsheet 9 - Socket Programming: RuangNgobrol
+# 💬 RuangNgobrol - Aplikasi Chat Real-time
 
-Di bawah ini adalah jawaban atas pertanyaan yang diminta, mengacu pada kode di folder aplikasi ruangngobrol.
+> **Jobsheet 9: Socket Programming**  
+> Memahami komunikasi bidirektional real-time menggunakan Socket.io dalam aplikasi web modern
 
-## 1) Perbedaan fungsi `socket.on` di `src/index.js` dan `public/js/chat.js`
-- Server (`src/index.js`): `socket.on` mendaftarkan handler untuk event yang dikirim DARI klien KE server. Contoh:
-  - `socket.on('join', ...)`: menerima data pengguna dan melakukan `socket.join(user.room)` agar socket bergabung ke ruangan tertentu, lalu broadcast status ke semua klien di ruangan tersebut.
-  - `socket.on('kirimPesan', ...)`: menerima pesan teks dari klien, mem-filter kata kasar, kemudian memancarkan event `pesan` ke semua klien di ruangan.
-  - `socket.on('kirimLokasi', ...)`: menerima koordinat dari klien, membentuk URL Google Maps, lalu memancarkan `locationMessage` ke ruangan.
-  - `socket.on('disconnect', ...)`: merespons saat klien terputus, menghapus user dari state server, dan broadcast notifikasi keluar.
-- Klien (`public/js/chat.js`): `socket.on` mendaftarkan listener untuk event yang dikirim DARI server KE klien. Contoh:
-  - `socket.on('pesan', ...)`: menerima objek pesan (username, text, createdAt) dan merendernya via Mustache ke daftar pesan.
-  - `socket.on('locationMessage', ...)`: menerima URL lokasi dan merender tautan lokasi.
-  - `socket.on('roomData', ...)`: menerima info ruangan dan daftar pengguna, lalu merender sidebar.
+---
 
-Intinya: `socket.on` di server menangani event yang datang dari klien; `socket.on` di klien menangani event yang datang dari server.
+## 📖 Tentang Jobsheet Ini
 
-## 2) Investigasi Console saat proses chat
-Selama chat, buka DevTools → Console.
-- Pada klien, setiap kali event diterima, kita mencetak ke console:
-  - `socket.on('pesan', ...)`: `console.log('pesan diterima:', message)` menampilkan objek pesan dengan `username`, `text`, dan `createdAt`.
-  - `socket.on('locationMessage', ...)`: `console.log('locationMessage diterima:', message)` menampilkan objek lokasi dengan `url` dan `createdAt`.
-  - `socket.on('roomData', ...)`: `console.log('roomData diperbarui:', { room, users })` menampilkan ruangan aktif dan array pengguna.
-Ketika kita mengirim pesan via form, server memprosesnya dan memancarkan kembali event `pesan` ke semua klien di ruangan. Itulah yang Anda lihat di Console karena handler di klien mencetak payload sebelum merender.
+Pada jobsheet ini, kita mempelajari konsep **Socket Programming** untuk membangun aplikasi chat real-time yang memungkinkan komunikasi instan antar pengguna dalam ruang chat terpisah. Berbeda dengan HTTP tradisional yang bersifat request-response, Socket.io memungkinkan komunikasi dua arah (*bidirectional*) secara *event-based*, sehingga data bisa mengalir dari server ke klien maupun sebaliknya tanpa perlu reload halaman.
 
-## 3) Fungsi library Mustache, Moment, dan QS
-- Mustache (template HTML di `chat.html`): digunakan untuk merender konten dinamis. Contoh di klien, kita ambil template `#message-template` dan memanggil `Mustache.render` dengan data `{ username, message, createdAt }` untuk menghasilkan markup pesan.
-- Moment: memformat timestamp `createdAt` menjadi format jam/menit yang ramah, misalnya `moment(message.createdAt).format('H:mm')`.
-- QS: mem-parsing query string dari URL `chat.html` (hasil form di `index.html`) menjadi object `{ username, room }` melalui `Qs.parse(location.search, { ignoreQueryPrefix: true })`.
+### 🎯 Fitur Aplikasi RuangNgobrol
 
-Ketiganya bersama-sama membuat UI mudah dirender (Mustache), waktu ditampilkan rapih (Moment), dan data form ruangan/nama terbaca di klien (QS).
+- ✅ Chat berbasis ruangan (room-based messaging)
+- ✅ Notifikasi real-time ketika user join/leave
+- ✅ Filter kata-kata kasar otomatis
+- ✅ Berbagi lokasi melalui Google Maps
+- ✅ Daftar anggota ruangan yang update secara live
+- ✅ Timestamp pesan dengan format yang rapi
 
-## 4) Penjelasan bagian Elements, Templates, dan Options di `chat.js`
-- Elements: referensi ke elemen DOM seperti form pesan, input, tombol share lokasi, dan container pesan. Ini menghubungkan JS dengan struktur HTML di `chat.html` (form `#form-pesan`, tombol `#kirim-lokasi`, container `#messages`).
-- Templates: mengambil isi template `<script type="text/html">` di `chat.html` (message, locationMessage, sidebar) agar bisa dirender secara dinamis dengan Mustache.
-- Options: `{ username, room }` dibaca dari query string di URL `chat.html`, yang berasal dari form di `index.html`. Nilai-nilai ini dipakai saat `socket.emit('join', { username, room })` agar server tahu ruangan mana dan siapa pengguna yang bergabung.
+---
 
-## 5) Fungsi `messages.js` dan `users.js` serta keterhubungannya
-- `messages.js`: menyediakan `generateMessage(username, text)` dan `generateLocationMessage(username, url)`. Server memanggil fungsi ini untuk membuat payload pesan yang konsisten (berisi `username`, `text`/`url`, `createdAt`). Klien kemudian menerima payload ini melalui event `pesan` dan `locationMessage` dan merendernya.
-- `users.js`: mengelola state pengguna dalam memori (array `users`).
-  - `tambahPengguna({ id, username, room })`: validasi dan menambahkan user ke sebuah room.
-  - `hapusPengguna(id)`: menghapus user saat disconnect.
-  - `ambilPengguna(id)`: mendapatkan user berdasarkan socket id.
-  - `ambilPenggunaDariRoom(room)`: mendapatkan semua user dalam satu room.
-Server (`index.js`) menggunakan modul ini untuk logika ruangan. Hasilnya memengaruhi event yang dipancarkan ke klien (`roomData`, `pesan`). Klien (`chat.js`) merender berdasarkan payload tersebut. File HTML mendefinisikan struktur tempat data dirender.
+## 🔍 Pembahasan Materi
 
-## 6) Bagaimana aplikasi mengirimkan lokasi
-- Klien: saat klik tombol "Share Lokasi", kode memanggil `navigator.geolocation.getCurrentPosition` untuk mendapatkan `latitude` dan `longitude`, lalu `socket.emit('kirimLokasi', { latitude, longitude })` ke server.
-- Server: menangkap event `kirimLokasi`, membentuk URL Google Maps `https://www.google.com/maps?q=lat,lng`, lalu memancar `locationMessage` ke semua klien di room. Klien menerima event tersebut dan merender tautan lokasi di chat.
+### **Konsep Socket.on di Server vs Client**
 
-## 7) Perbedaan `npm run dev` dan `npm run start`
-- `npm run dev`: menjalankan `nodemon src/index.js`. Nodemon memantau perubahan file dan otomatis me-restart server saat ada perubahan—ideal untuk pengembangan.
-- `npm run start`: menjalankan `node src/index.js` satu kali, tanpa auto-restart—cocok untuk mode produksi atau eksekusi langsung.
-Menjalankan dengan `node` manual (seperti jobsheet sebelumnya) tidak memberi auto-restart; di sini kita ingin workflow dev yang lebih cepat, sehingga `dev` dipakai.
+Salah satu hal menarik dari Socket.io adalah bagaimana event listener bekerja di dua sisi yang berbeda. Di file `src/index.js` (sisi server), fungsi `socket.on` digunakan untuk **mendengarkan event yang dikirim dari browser pengguna**. Misalnya:
 
-## 8) Fungsi socket lain yang digunakan
-- Di klien:
-  - `socket.emit('kirimPesan', ...)`: mengirim event ke server saat user mengirim pesan.
-  - `socket.emit('kirimLokasi', ...)`: mengirim koordinat lokasi ke server.
-  - `socket.emit('join', ...)`: mengirim data awal untuk bergabung ke room.
-- Di server:
-  - `socket.join(room)`: memasukkan socket ke room tertentu.
-  - `io.to(room).emit(...)`: memancarkan event ke semua socket yang berada di room tersebut.
-  - `socket.broadcast.to(room).emit(...)`: memancarkan ke room, tapi tidak termasuk pengirim.
-  - `io.emit(...)`: memancarkan ke semua koneksi (tidak dibatasi room) — di app ini kita lebih banyak menggunakan broadcast ke room.
+```javascript
+socket.on('join', (options, callback) => {
+  const { error, user } = tambahPengguna({ id: socket.id, ...options })
+  // ... logika bergabung ke room
+})
+```
 
-## 9) Real-time bidirectional event-based communication
-Aplikasi ini bekerja dua arah secara real-time menggunakan event:
-- Arah klien → server: klien memanggil `socket.emit('kirimPesan', pesan)` dan `socket.emit('kirimLokasi', coords)`.
-- Arah server → klien: server memanggil `io.to(room).emit('pesan', payload)` atau `io.to(room).emit('locationMessage', payload)`.
-Keuntungan pendekatan berbasis event: kita mendaftarkan handler dengan `socket.on('namaEvent', handler)` di kedua sisi. Saat event dipancarkan, handler terkait dieksekusi segera, sehingga pesan/lokasi muncul seketika tanpa reload halaman.
+Ketika user mengisi form join dan menekan tombol, browser akan mengirim event `join` yang ditangkap oleh handler ini. Server kemudian memproses data tersebut, memasukkan socket ke dalam room tertentu dengan `socket.join(user.room)`, dan mem-broadcast notifikasi bahwa ada member baru.
+
+Sebaliknya, di `public/js/chat.js` (sisi client), `socket.on` berfungsi untuk **mendengarkan event yang dipancarkan server**:
+
+```javascript
+socket.on('pesan', (message) => {
+  console.log('pesan diterima:', message)
+  const html = Mustache.render(messageTemplate, {
+    username: message.username,
+    message: message.text,
+    createdAt: moment(message.createdAt).format('H:mm')
+  })
+  $messages.insertAdjacentHTML('beforeend', html)
+})
+```
+
+Jadi pada dasarnya, `socket.on` di server = listener untuk client, sedangkan `socket.on` di client = listener untuk server. Konsep ini yang memungkinkan komunikasi dua arah terjadi dengan lancar.
+
+---
+
+### **Mengamati Aktivitas di Browser Console**
+
+Saat kita membuka DevTools dan masuk ke tab **Console**, beberapa log akan muncul setiap kali ada aktivitas chat. Ini karena kita menambahkan `console.log` di beberapa event handler:
+
+```javascript
+socket.on('pesan', (message) => {
+  console.log('pesan diterima:', message)
+  // render message
+})
+
+socket.on('roomData', ({ room, users }) => {
+  console.log('roomData diperbarui:', { room, users })
+  // update sidebar
+})
+```
+
+Log tersebut membantu kita memahami alur data: ketika seseorang mengetik pesan dan klik kirim, browser pertama memanggil `socket.emit('kirimPesan', pesan)`, lalu server memproses dan mem-broadcast event `pesan` ke semua member di room tersebut. Setiap browser yang menerima event ini akan mencetak payload di console sebelum merender pesan ke UI.
+
+Ini sangat berguna untuk debugging, karena kita bisa melihat struktur data yang dikirim/diterima, termasuk timestamp yang di-generate server.
+
+---
+
+### **Peran Tiga Library Utama**
+
+Di bagian bawah `chat.html`, kita meng-include tiga library penting:
+
+#### 1️⃣ **Mustache.js** — Templating Engine
+Mustache membantu kita membuat HTML secara dinamis tanpa harus menulis kode DOM manipulation yang panjang. Di `chat.html`, kita mendefinisikan template seperti ini:
+
+```html
+<script id="message-template" type="text/html">
+  <div class="message">
+    <p>
+      <span class="message__name">{{username}}</span>
+      <span class="message__meta">{{createdAt}}</span>
+    </p>
+    <p>{{message}}</p>
+  </div>
+</script>
+```
+
+Lalu di `chat.js`, kita render template tersebut dengan data dari server:
+
+```javascript
+const html = Mustache.render(messageTemplate, {
+  username: message.username,
+  message: message.text,
+  createdAt: moment(message.createdAt).format('H:mm')
+})
+```
+
+Hasilnya, markup HTML di-generate otomatis dengan data yang sesuai, dan kita tinggal insert ke DOM.
+
+#### 2️⃣ **Moment.js** — Date Formatting
+Timestamp dari server berupa angka Unix (milliseconds), contoh: `1704720000000`. Agar lebih *user-friendly*, kita format menggunakan Moment:
+
+```javascript
+moment(message.createdAt).format('H:mm')  // Output: "14:30"
+```
+
+Jadi pesan yang dikirim jam 2 siang akan tampil sebagai "14:00" di chat, bukan angka panjang yang membingungkan.
+
+#### 3️⃣ **QS (Query String)** — Parsing URL Parameters
+Ketika user mengisi form di `index.html` dan klik "Bergabung ke Chat", browser akan redirect ke `/chat.html?username=Agus&room=javascript`. Library QS mem-parse URL tersebut menjadi object JavaScript:
+
+```javascript
+const { username, room } = Qs.parse(location.search, { ignoreQueryPrefix: true })
+// Result: { username: "Agus", room: "javascript" }
+```
+
+Data ini kemudian dikirim ke server melalui `socket.emit('join', { username, room })` agar server tahu siapa yang join dan ke ruangan mana.
+
+---
+
+### **Memahami Bagian Elements, Templates, dan Options**
+
+Di awal file `chat.js`, kita mengelompokkan kode menjadi tiga bagian:
+
+#### 📌 **Elements** — Referensi DOM
+Kita menyimpan referensi ke elemen-elemen HTML yang akan sering digunakan:
+
+```javascript
+const $messageForm = document.querySelector('#form-pesan')
+const $messageFormInput = document.querySelector('input')
+const $sendLocationButton = document.querySelector('#kirim-lokasi')
+const $messages = document.querySelector('#messages')
+```
+
+Ini menghubungkan JavaScript dengan struktur HTML di `chat.html`. Misalnya, `$messageForm` merujuk ke form pengiriman pesan, sedangkan `$messages` adalah container tempat semua pesan ditampilkan.
+
+#### 📌 **Templates** — Markup Dinamis
+Kita mengambil isi dari tag `<script type="text/html">` untuk digunakan sebagai template Mustache:
+
+```javascript
+const messageTemplate = document.querySelector('#message-template').innerHTML
+const locationMessageTemplate = document.querySelector('#locationMessage-template').innerHTML
+const sidebarTemplate = document.querySelector('#sidebar-template').innerHTML
+```
+
+Setiap kali ada pesan baru atau lokasi dibagikan, template ini di-render dengan data yang sesuai.
+
+#### 📌 **Options** — Parameter Join
+Data username dan room di-parse dari URL:
+
+```javascript
+const { username, room } = Qs.parse(location.search, { ignoreQueryPrefix: true })
+```
+
+Nilai ini digunakan saat koneksi pertama kali dibuat untuk memberi tahu server: "Halo, saya si Agus dan mau masuk ke room JavaScript".
+
+---
+
+### **Peran File Utils: messages.js dan users.js**
+
+#### 🗂️ **messages.js** — Pembuat Struktur Pesan
+File ini berisi dua fungsi sederhana yang membuat objek pesan dengan format konsisten:
+
+```javascript
+const generateMessage = (username, text) => {
+  return {
+    username,
+    text,
+    createdAt: new Date().getTime()
+  }
+}
+```
+
+Server memanggil fungsi ini setiap kali ada pesan baru atau notifikasi. Hasilnya dikirim ke client dalam bentuk objek yang sudah terstruktur rapi, sehingga client tinggal render tanpa perlu format ulang.
+
+#### 👥 **users.js** — Manajemen Pengguna
+File ini mengelola state pengguna menggunakan array sederhana:
+
+```javascript
+const users = []
+
+const tambahPengguna = ({ id, username, room }) => {
+  username = username.trim().toLowerCase()
+  room = room.trim().toLowerCase()
+  
+  // Cek username duplicate
+  const existingUser = users.find((user) => 
+    user.room === room && user.username === username
+  )
+  
+  if (existingUser) {
+    return { error: 'Username sudah digunakan!' }
+  }
+  
+  const user = { id, username, room }
+  users.push(user)
+  return { user }
+}
+```
+
+Fungsi-fungsi di sini dipanggil oleh server untuk:
+- Menambahkan user saat join (validasi nama duplikat)
+- Menghapus user saat disconnect
+- Mengambil info user berdasarkan socket ID
+- Mendapatkan semua member di satu room (untuk sidebar)
+
+Hasilnya memengaruhi event yang dipancarkan server, seperti `roomData` yang berisi daftar member aktif di room tersebut.
+
+---
+
+### **Cara Kerja Fitur Share Lokasi**
+
+Fitur ini memanfaatkan **Geolocation API** bawaan browser:
+
+1️⃣ **Di Client** (`chat.js`):  
+Ketika tombol "Share Lokasi" diklik, kita meminta izin akses lokasi dari browser:
+
+```javascript
+$sendLocationButton.addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    return alert('Browser anda tidak mendukung Geolocation')
+  }
+  
+  navigator.geolocation.getCurrentPosition((position) => {
+    socket.emit('kirimLokasi', {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude
+    })
+  })
+})
+```
+
+Browser akan menampilkan popup permission. Jika user mengizinkan, koordinat lat/lng dikirim ke server.
+
+2️⃣ **Di Server** (`index.js`):  
+Server menerima koordinat dan membuat URL Google Maps:
+
+```javascript
+socket.on('kirimLokasi', (coords, callback) => {
+  const user = ambilPengguna(socket.id)
+  io.to(user.room).emit('locationMessage', 
+    generateLocationMessage(
+      user.username, 
+      `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`
+    )
+  )
+  callback()
+})
+```
+
+Event `locationMessage` dipancarkan ke semua member di room, dan client merender link yang bisa diklik untuk membuka peta.
+
+---
+
+### **Mengapa npm run dev, Bukan node index.js?**
+
+Di `package.json`, kita mendefinisikan dua script:
+
+```json
+"scripts": {
+  "start": "node src/index.js",
+  "dev": "nodemon src/index.js"
+}
+```
+
+**`npm run dev`** menggunakan **nodemon**, sebuah tool yang memantau perubahan file. Setiap kali kita edit dan save kode, nodemon otomatis restart server tanpa perlu menekan Ctrl+C dan menjalankan ulang. Ini sangat membantu saat development karena kita bisa langsung lihat efek perubahan kode.
+
+**`npm run start`** menjalankan server dengan `node` biasa. Server hanya jalan sekali, dan jika ada perubahan kode, kita harus manual restart. Biasanya digunakan untuk production.
+
+Bandingkan dengan jobsheet sebelumnya yang pakai `node namafile.js`, di mana kita harus restart manual setiap ada perubahan. Dengan nodemon, workflow jadi lebih efisien.
+
+---
+
+### **Fungsi Socket Lain yang Digunakan**
+
+Selain `socket.on`, ada beberapa method Socket.io penting dalam aplikasi ini:
+
+#### 🔹 **socket.emit** (Client → Server)
+Mengirim event dari browser ke server:
+
+```javascript
+socket.emit('kirimPesan', pesan, (error) => {
+  if (error) return console.log(error)
+})
+```
+
+#### 🔹 **socket.join(room)** (Server)
+Menambahkan socket ke dalam room tertentu:
+
+```javascript
+socket.join(user.room)  // Socket ini sekarang bagian dari room "javascript"
+```
+
+#### 🔹 **io.to(room).emit** (Server → Multiple Clients)
+Memancarkan event ke semua socket dalam satu room:
+
+```javascript
+io.to(user.room).emit('pesan', generateMessage(user.username, pesan))
+```
+
+Hanya member yang ada di room tersebut yang akan menerima event ini.
+
+#### 🔹 **socket.broadcast.to(room).emit** (Server → Others Only)
+Sama seperti `io.to`, tapi **tidak** mengirim ke socket pengirim:
+
+```javascript
+socket.broadcast.to(user.room).emit('pesan', 
+  generateMessage('Admin', `${user.username} telah bergabung`)
+)
+```
+
+User yang baru join tidak akan menerima notifikasi join miliknya sendiri, tapi member lain akan menerima.
+
+---
+
+### **Komunikasi Real-time Bidirectional Event-based**
+
+Ini adalah inti dari Socket.io. Berbeda dengan HTTP biasa yang hanya bisa request-response (client → server → client), Socket.io memungkinkan **komunikasi dua arah** yang **event-driven**:
+
+#### 🔄 **Bidirectional (Dua Arah)**
+- Client bisa kirim data ke server kapan saja dengan `socket.emit`
+- Server bisa push data ke client kapan saja dengan `io.emit` atau `socket.emit`
+
+Tidak ada batasan "harus ada request dulu baru ada response". Misalnya, saat user A mengirim pesan, server langsung push pesan tersebut ke user B, C, D tanpa mereka perlu refresh atau polling.
+
+#### ⚡ **Real-time**
+Event terjadi seketika. Begitu server menerima event `kirimPesan`, dalam hitungan milidetik semua client di room tersebut sudah menerima event `pesan` dan merender pesan baru.
+
+#### 📡 **Event-based**
+Komunikasi tidak berdasarkan URL/endpoint, tapi berdasarkan **nama event**. Kita bebas mendefinisikan event seperti `join`, `kirimPesan`, `kirimLokasi`, dll. Setiap event punya handler masing-masing di kedua sisi:
+
+```javascript
+// Server mendengarkan event dari client
+socket.on('kirimPesan', (pesan, callback) => { /* ... */ })
+
+// Client mendengarkan event dari server
+socket.on('pesan', (message) => { /* ... */ })
+```
+
+Pendekatan ini membuat kode lebih terstruktur dan mudah dikembangkan, karena setiap fitur punya event channel sendiri.
+
+---
+
+## 🚀 Cara Menjalankan Aplikasi
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Jalankan development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Buka browser dan akses `http://localhost:3000`
+
+4. Untuk testing multi-user, buka tab baru atau gunakan browser berbeda, lalu join ke room yang sama.
+
+---
+
+## 📦 Teknologi yang Digunakan
+
+| Library | Fungsi |
+|---------|--------|
+| **Express.js** | Web server framework |
+| **Socket.io** | Real-time communication |
+| **bad-words** | Filter kata kasar |
+| **Mustache.js** | HTML templating |
+| **Moment.js** | Format waktu |
+| **QS** | Parse query string |
+| **Nodemon** | Auto-restart saat development |
+
+---
+
+## 📝 Catatan Pembelajaran
+
+Jobsheet ini memberikan pemahaman mendalam tentang bagaimana aplikasi chat modern bekerja. Konsep Socket.io yang dipelajari di sini bisa diterapkan untuk berbagai use case lain seperti:
+
+- 📊 Real-time dashboard/monitoring
+- 🎮 Multiplayer games
+- 📡 Live notifications
+- 🤝 Collaborative editing tools
+- 📹 Video call signaling
+
+Socket programming adalah fondasi penting dalam pengembangan aplikasi web interaktif yang responsif dan modern.
