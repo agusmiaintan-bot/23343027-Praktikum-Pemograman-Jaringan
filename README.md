@@ -17,7 +17,7 @@
 <table>
 <tr>
 <td width="200px" align="center">
-<img src="https://avatars.githubusercontent.com/u/1?v=4" width="150px" style="border-radius: 50%;" alt="Profile Picture"/>
+<img src="./profil.jpeg" width="150px" style="border-radius: 50%;" alt="Agusmia Intan Sari"/>
 </td>
 <td>
 
@@ -29,7 +29,7 @@
 | **🏛️ Fakultas** | Fakultas Teknik |
 | **🏫 Universitas** | Universitas Negeri Padang |
 | **💡 Bidang Minat** | Pemrograman, Pengembangan Aplikasi, dan Teknologi Jaringan |
-| **📧 Email** | agusmia.intan@student.unp.ac.id |
+| **📧 Email** | agusmiaintan@student.unp.ac.id |
 
 </td>
 </tr>
