@@ -1,4 +1,4 @@
-# 📘 JobSheet 5 - Basic Web Server
+# 📘 JobSheet 5 - Web Server and ExpressJs
 
 <div align="center">
 
@@ -37,7 +37,7 @@ Setelah menyelesaikan jobsheet ini, mahasiswa diharapkan dapat:
 ## 📂 Struktur Folder
 
 ```
-Jobsheet 5 - Basic Web Server/
+Jobsheet 5 - Web Server and ExpressJs/
 ├── web-server/
 │   ├── src/
 │   │   └── app.js              # Server configuration & routes
@@ -72,7 +72,7 @@ Jobsheet 5 - Basic Web Server/
 ### 1. Install Dependencies
 
 ```bash
-cd "Jobsheet 5 - Basic Web Server/web-server"
+cd "Jobsheet 5 - Web Server and ExpressJs/web-server"
 npm install
 ```
 
